@@ -115,6 +115,9 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
         ws[f"C{source_row}"].alignment
     )
 
+    ws.unmerge_cells(f"C{len(tables['main']) * 2 + 1}:C{len(tables['main']) * 2 + 2}")
+    ws.unmerge_cells(f"D{len(tables['main']) * 2 + 1}:D{len(tables['main']) * 2 + 2}")
+
 
 
     # saving

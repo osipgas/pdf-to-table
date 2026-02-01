@@ -46,8 +46,8 @@ def convert_to_main_table(table_path, departure, destination):
         df = df.iloc[table_start_row_index:len(df), 0:18]
         df = df.iloc[:table_end_row_index, :]
         df.columns = new_cols
-        cols_indices = {"WAYPOINT": 0, "ALT": 4, "HDG": 2, "CRS": 3, "DIST": 11, "TIME": 16}
-        shorten_df = df.iloc[:, [0, 4, 2, 3, 11, 16]]
+        cols_indices = {"WAYPOINT": 0, "ALT": 4, "HDG": 2, "CRS": 3, "DIST": 10, "TIME": 15, "EFOB": 13}
+        shorten_df = df.iloc[:, [0, 4, 2, 3, 10, 15, 13]]
         shorten_df.columns = cols_indices.keys()
         return shorten_df
     else:
@@ -173,7 +173,7 @@ def modify_excel(template_path, N, output_path):
 
 
 def insert_values_into_template(table, ws):
-    col_to_letter = {"ALT": "C", "HDG": "D", "CRS": "E", "DIST": "F", "TIME": "G"}
+    col_to_letter = {"ALT": "C", "HDG": "D", "CRS": "E", "DIST": "F", "TIME": "G", "EFOB": "H"}
 
     for i in range(1, len(table) * 2 + 1):
         if i % 2 == 0:
