@@ -97,7 +97,7 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
     destination_text = fill_template(text_template, destination_info)
 
     ws["C2"].value = departure_text
-    ws[f"C{len(tables['main']) * 2}"].value = destination_text
+    ws[f"E{len(tables['main']) * 2}"].value = destination_text
 
 
 
