@@ -2,7 +2,9 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
 from pdf_processing.pdf_to_xlsx import extract_tables, pdf_to_excel
+from dotenv import load_dotenv
 
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
