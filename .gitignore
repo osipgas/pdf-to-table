@@ -24,5 +24,4 @@ yarn-error.log*
 
 
 backend/pdf_processing/extracted/
-backend/pdf_processing/*.xlsx
 backend/result.xlsx
