@@ -4,7 +4,16 @@ import os
 from pdf_processing.pdf_to_xlsx import extract_tables, pdf_to_excel
 from dotenv import load_dotenv
 
-load_dotenv()
+
+import os
+from dotenv import load_dotenv
+
+# Указываем точный путь к файлу .env
+dotenv_path = os.path.join('/root/projects/pdf-to-table/backend', '.env')
+load_dotenv(dotenv_path)
+
+# Для теста: выведите в лог, загрузилось ли что-то (потом удалите)
+print(f"DEBUG: Client ID is {os.getenv('PDF_SERVICES_CLIENT_ID')}")
 
 app = Flask(__name__)
 CORS(app)
