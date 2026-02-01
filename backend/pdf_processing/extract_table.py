@@ -31,12 +31,11 @@ logging.basicConfig(level=logging.INFO)
 # Refer to README.md for instructions on how to run the samples & understand output zip file.
 #
 class ExtractTextTableInfoFromPDF:
-    def __init__(self, pdf_path):
+    def __init__(self, pdf_path, output_path):
         try:
             file = open(pdf_path, 'rb')
             input_stream = file.read()
-            file.close()
-
+            file.close()  
             # Initial setup, create credentials instance
             credentials = ServicePrincipalCredentials(
                 client_id=os.getenv('PDF_SERVICES_CLIENT_ID'),
@@ -66,23 +65,12 @@ class ExtractTextTableInfoFromPDF:
             stream_asset: StreamAsset = pdf_services.get_content(result_asset)
 
             # Creates an output stream and copy stream asset's content to it
-            output_file_path = self.create_output_file_path()
+            output_file_path = output_path
             with open(output_file_path, "wb") as file:
                 file.write(stream_asset.get_input_stream())
 
         except (ServiceApiException, ServiceUsageException, SdkException) as e:
             logging.exception(f'Exception encountered while executing operation: {e}')
 
-    # Generates a string containing a directory structure and file name for the output file
-    @staticmethod
-    def create_output_file_path() -> str:
-        now = datetime.now()
-        time_stamp = now.strftime("%Y-%m-%dT%H-%M-%S")
-        os.makedirs("output/ExtractTextTableInfoFromPDF", exist_ok=True)
-        return f"output/ExtractTextTableInfoFromPDF/extract{time_stamp}.zip"
-
-
 if __name__ == "__main__":
-    import os
-
-    ExtractTextTableInfoFromPDF('data/f3/log2.pdf')
+    ExtractTextTableInfoFromPDF('data/f3/log2.pdf', "extracted.zip")
