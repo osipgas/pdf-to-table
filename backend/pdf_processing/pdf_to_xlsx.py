@@ -111,8 +111,8 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
     if source_height is not None:
         ws.row_dimensions[target_row].height = source_height
 
-    ws[f"C{target_row}"].alignment = copy(
-        ws[f"E{source_row}"].alignment
+    ws[f"E{target_row}"].alignment = copy(
+        ws[f"C{source_row}"].alignment
     )
 
     ws.unmerge_cells(f"C{len(tables['main']) * 2 + 1}:C{len(tables['main']) * 2 + 2}")
