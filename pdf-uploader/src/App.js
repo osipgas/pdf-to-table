@@ -15,7 +15,7 @@ function App() {
     formData.append("file", selectedFile);
 
     try {
-      const res = await fetch("http://localhost:5001/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -48,7 +48,7 @@ function App() {
     setMessage("Converting PDF to Excel...");
 
     try {
-      const res = await fetch("http://localhost:5001/convert", {
+      const res = await fetch("/api/convert", {
         method: "POST",
       });
       const data = await res.json();
@@ -68,7 +68,7 @@ function App() {
 
   const handleDownload = async () => {
     try {
-      const res = await fetch("http://localhost:5001/download");
+      const res = await fetch("/api/download");
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
