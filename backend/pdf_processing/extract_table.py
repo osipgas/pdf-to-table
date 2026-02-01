@@ -20,10 +20,13 @@ from adobe.pdfservices.operation.pdfjobs.jobs.extract_pdf_job import ExtractPDFJ
 from adobe.pdfservices.operation.pdfjobs.params.extract_pdf.extract_element_type import ExtractElementType
 from adobe.pdfservices.operation.pdfjobs.params.extract_pdf.extract_pdf_params import ExtractPDFParams
 from adobe.pdfservices.operation.pdfjobs.result.extract_pdf_result import ExtractPDFResult
+from dotenv import load_dotenv
 
 # Initialize the logger
 logging.basicConfig(level=logging.INFO)
 
+
+load_dotenv()
 
 #
 # This sample illustrates how to extract Text and Table Information from PDF.
