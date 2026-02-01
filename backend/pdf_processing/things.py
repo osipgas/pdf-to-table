@@ -212,6 +212,18 @@ def get_names(pdf_path):
 
                     texts.append(text)
                     heights.append(y_pos)
+
+    filtered_texts = []
+    filtered_heights = []
+
+    for text, height in zip(texts, heights):
+        if text != "Diagram Unavailable":
+            filtered_texts.append(text)
+            filtered_heights.append(height)
+
+    texts = filtered_texts
+    heights = filtered_heights
+
     texts = texts[-4:]
     heights = heights[-4:]
 
@@ -228,5 +240,7 @@ def get_names(pdf_path):
 
 def fill_template(template, info):
     for key, value in info.items():
+        if value is None:
+            value = "_____"
         template = template.replace(key, value)
     return template

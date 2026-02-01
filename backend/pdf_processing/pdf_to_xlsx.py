@@ -2,6 +2,7 @@ from .things import extract_first_page_text, get_departure_and_destination, conv
 from pathlib import Path
 from .extract_table import ExtractTextTableInfoFromPDF
 import zipfile
+from copy import copy
 
 
 def extract_tables(pdf_path, extract_to):
@@ -45,16 +46,19 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
 
 
 
-
-    # extracting names
-    maybe_departure, maybe_departure_name, maybe_destination, maybe_destination_name = get_names(pdf_path)
     departure_name, destination_name = None, None
 
-    if departure == maybe_departure:
-        departure_name = maybe_departure_name
+    try:
+        # extracting names
+        maybe_departure, maybe_departure_name, maybe_destination, maybe_destination_name = get_names(pdf_path)
 
-    if destination == maybe_destination:
-        destination_name = maybe_destination_name
+        if departure == maybe_departure:
+            departure_name = maybe_departure_name
+
+        if destination == maybe_destination:
+            destination_name = maybe_destination_name
+    except:
+        pass
 
 
 
@@ -101,13 +105,15 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
     # formating table
     source_row = 2
     target_row = len(main_df) * 2
-    print(target_row)
 
     source_height = ws.row_dimensions[source_row].height
 
     if source_height is not None:
         ws.row_dimensions[target_row].height = source_height
 
+    ws[f"C{target_row}"].alignment = copy(
+        ws[f"C{source_row}"].alignment
+    )
 
 
 
