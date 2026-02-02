@@ -1,5 +1,7 @@
 import pandas as pd
 from pdfminer.high_level import extract_text
+from openpyxl.styles import Alignment
+
 
 def extract_first_page_text(pdf_path):
     text = extract_text(pdf_path, page_numbers=[0])
@@ -96,52 +98,71 @@ def show_excel_table(file_path, sheet_name=0):
         stralign="left"
     ))
 
-def modify_excel(template_path, N, output_path):
-    """
-    Модифицирует Excel-шаблон: повторяет промежуточные строки (4 и 5) N раз,
-    сохраняя стили, объединенные ячейки и форматирование.
-    
-    :param template_path: Путь к шаблону Excel.
-    :param N: Общее количество повторений промежуточных строк (минимум 1).
-    :param output_path: Путь для сохранения модифицированного файла.
-    """
+import openpyxl
+from copy import copy
+import sys
+
+from openpyxl.worksheet.cell_range import CellRange
+
+def ranges_intersect(a: CellRange, b: CellRange) -> bool:
+    return not (
+        a.max_row < b.min_row or
+        a.min_row > b.max_row or
+        a.max_col < b.min_col or
+        a.min_col > b.max_col
+    )
+
+def remove_intersecting_merges(ws, target_range):
+    target = CellRange(target_range)
+    for merge in list(ws.merged_cells.ranges):
+        merge_range = CellRange(merge.coord)
+        if ranges_intersect(merge_range, target):
+            ws.unmerge_cells(merge.coord)
+
+
+def modify_excel(input_path, N, output_path):
     if N < 1:
-        raise ValueError("N должно быть не меньше 1")
-    
-    wb = openpyxl.load_workbook(template_path)
-    ws = wb.active  # Или wb['Sheet1'] если нужно указать имя листа
-    
-    # Промежуточные строки (исходные)
-    intermediate_rows = [4, 5]
-    
-    # Текущее количество наборов промежуточных строк (1 в шаблоне)
-    current_count = 1
-    inserts_needed = N - current_count
-    
-    if inserts_needed <= 0:
-        wb.save(output_path)
+        print("N must be at least 1.")
         return
-    
-    # Позиция для вставки новых наборов: сразу после существующих промежуточных (строка 6)
-    insert_position = 6
-    
-    for _ in range(inserts_needed):
-        # Вставляем 2 новые строки в позицию insert_position
-        ws.insert_rows(insert_position, amount=2)
-        
-        # Копируем значения, стили и форматирование из исходных строк 4 и 5 в новые
-        for offset in range(2):
-            src_row = intermediate_rows[offset]
-            dest_row = insert_position + offset
-            
-            # Копируем ячейки по столбцам
+
+    wb = openpyxl.load_workbook(input_path)
+    ws = wb.active  # Assuming the active sheet is the one to modify
+
+    # Define the repeating rows (1-based indexing)
+    repeat_start = 3
+    repeat_end = 5
+    repeat_height = repeat_end - repeat_start + 1  # 3 rows
+
+    current_end = repeat_end
+
+    # The template already has one set of repeating rows, so insert (N-1) additional sets
+    for _ in range(N - 1):
+        # Position to insert the new rows: after the current last repeat row
+        insert_row = current_end + 1
+
+        # Insert empty rows
+        ws.insert_rows(insert_row, amount=repeat_height)
+
+        # Copy row dimensions, cell values, and styles
+        for row_offset in range(repeat_height):
+            src_row = repeat_start + row_offset
+            dest_row = insert_row + row_offset
+
+            # Copy row height
+            try:
+                height = ws.row_dimensions[src_row].height
+                if height is not None:
+                    ws.row_dimensions[dest_row].height = height
+            except KeyError:
+                pass
+
+            # Copy cells
             for col in range(1, ws.max_column + 1):
                 src_cell = ws.cell(row=src_row, column=col)
                 dest_cell = ws.cell(row=dest_row, column=col)
-                
+
                 dest_cell.value = src_cell.value
-                
-                # Копируем стиль, если он есть
+
                 if src_cell.has_style:
                     dest_cell.font = copy(src_cell.font)
                     dest_cell.border = copy(src_cell.border)
@@ -149,41 +170,66 @@ def modify_excel(template_path, N, output_path):
                     dest_cell.number_format = copy(src_cell.number_format)
                     dest_cell.protection = copy(src_cell.protection)
                     dest_cell.alignment = copy(src_cell.alignment)
-            
-            # Копируем высоту строки
-            if ws.row_dimensions[src_row].height is not None:
-                ws.row_dimensions[dest_row].height = ws.row_dimensions[src_row].height
-        
-        # Копируем объединенные ячейки (merged cells) для новых строк
+
+        # Copy merged cells
+        new_merges = []
+        offset = insert_row - repeat_start
         for merge in list(ws.merged_cells.ranges):
-            # Если объединение в исходных промежуточных строках
-            if merge.min_row in intermediate_rows:
-                # Рассчитываем новые координаты для вставленной копии
-                row_offset = insert_position - 4  # Смещение относительно исходной строки 4
-                new_min_row = merge.min_row + row_offset
-                new_max_row = merge.max_row + row_offset
-                new_merge = f"{openpyxl.utils.get_column_letter(merge.min_col)}{new_min_row}:{openpyxl.utils.get_column_letter(merge.max_col)}{new_max_row}"
-                ws.merge_cells(new_merge)
-        
-        # Сдвигаем позицию вставки вниз на 2 строки для следующего набора
-        insert_position += 2
-    wb.save(output_path)
+            if merge.min_row >= repeat_start and merge.max_row <= repeat_end:
+                new_min_row = merge.min_row + offset
+                new_max_row = merge.max_row + offset
+                new_merge = openpyxl.worksheet.cell_range.CellRange(
+                    min_row=new_min_row,
+                    max_row=new_max_row,
+                    min_col=merge.min_col,
+                    max_col=merge.max_col
+                )
+                new_merges.append(new_merge)
+
+        for new_merge in new_merges:
+            ws.merge_cells(new_merge.coord)
+
+        # Update current_end
+        current_end += repeat_height
+
+    # merging
+    for i in range(5, 17 * 3, 3):
+        ws.merge_cells(f"C{i}:C{i+1}")
+        ws.merge_cells(f"H{i}:H{i+1}")
+
+    remove_intersecting_merges(ws, "C3:H4")
+    ws.merge_cells("C3:H4")
+
+    remove_intersecting_merges(ws, f"C{N*3+1}:H{N*3+2}")
+    ws.merge_cells(f"C{N*3+1}:H{N*3+2}")
+
     return wb
 
 
-
 def insert_values_into_template(table, ws):
-    col_to_letter = {"ALT": "C", "HDG": "D", "CRS": "E", "DIST": "F", "TIME": "G", "EFOB": "H"}
+    upper_col_to_letter = {"ALT": "C", "HDG": "D", "DIST": "E", "EFOB": "F"}
+    lower_col_to_letter = {"CRS": "D", "TIME": "E"}
 
-    for i in range(1, len(table) * 2 + 1):
-        if i % 2 == 0:
-            ws[f"A{i}"].value = i / 2
-            ws[f"B{i}"].value = list(table["WAYPOINT"])[int(i/2 - 1)]
+    for i in range(3, len(table) * 3 + 1, 3):
+        ws[f"A{i}"].value = i / 3
+        ws[f"B{i}"].value = list(table["WAYPOINT"])[int(i/3 - 1)]
 
-    for col, letter in col_to_letter.items():
-        for i in range(3, (len(table)) * 2 + 2):  
-            if i % 2 != 0:
-                ws[f"{letter}{i}"].value = list(table[col])[int((i - 3) // 2)]
+    for id_table, i in enumerate(range(5, len(table) * 3, 3), start=1):
+        for col, letter in upper_col_to_letter.items():
+            value = list(table[col])[id_table]
+            if col == "DIST":
+                if len(value.split()) > 1:
+                    value = value.split()[0]
+
+            ws[f"{letter}{i}"].value = value
+            if col != "ALT":
+                ws[f"{letter}{i}"].alignment = Alignment(horizontal="left", vertical="center")
+            else:
+                ws[f"{letter}{i}"].alignment = Alignment(horizontal="center", vertical="center")
+
+        for col, letter in lower_col_to_letter.items():
+            ws[f"{letter}{i+1}"].value = list(table[col])[id_table]
+            ws[f"{letter}{i+1}"].alignment = Alignment(horizontal="right", vertical="center")
 
 
 
@@ -244,3 +290,28 @@ def fill_template(template, info):
             value = "_____"
         template = template.replace(key, value)
     return template
+
+
+def append_workbook_below(wb_top, wb_bottom):
+    ws_top = wb_top.active
+    ws_bottom = wb_bottom.active
+
+    start_row = ws_top.max_row + 1
+
+    for row in ws_bottom.iter_rows():
+        for cell in row:
+            new_cell = ws_top.cell(
+                row=start_row + cell.row - 1,
+                column=cell.column,
+                value=cell.value
+            )
+
+            if cell.has_style:
+                new_cell.font = copy(cell.font)
+                new_cell.border = copy(cell.border)
+                new_cell.fill = copy(cell.fill)
+                new_cell.number_format = copy(cell.number_format)
+                new_cell.alignment = copy(cell.alignment)
+                new_cell.protection = copy(cell.protection)
+
+    return wb_top

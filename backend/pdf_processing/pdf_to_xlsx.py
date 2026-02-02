@@ -1,8 +1,10 @@
-from .things import extract_first_page_text, get_departure_and_destination, convert_to_main_table, convert_to_sub_table, modify_excel, show_excel_table, insert_values_into_template, get_names, fill_template
+from .things import extract_first_page_text, get_departure_and_destination, convert_to_main_table, convert_to_sub_table, modify_excel, show_excel_table, insert_values_into_template, get_names, fill_template, append_workbook_below
 from pathlib import Path
 from .extract_table import ExtractTextTableInfoFromPDF
 import zipfile
 from copy import copy
+from openpyxl.styles import Alignment
+import openpyxl
 
 
 def extract_tables(pdf_path, extract_to):
@@ -38,7 +40,7 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
 
 
     # inserting data
-    wb = modify_excel(template_path, len(tables["main"]) - 1, "result.xlsx")
+    wb = modify_excel(template_path, len(tables["main"]), "result.xlsx")
     ws = wb.active
     insert_values_into_template(tables["main"], ws)
 
@@ -86,45 +88,48 @@ def pdf_to_excel(pdf_path, tables_path, save_path, template_path):
     }
 
 
-    text_template = """Departure (Name: <Name>, Code: ___, Elevation: <Elevation>, QFU°/QFU°: ___, DA: ___, Circuit pattern altitude: ___;
+    text_template = """Name: <Name>, Elevation: <Elevation>, DA: ___, Circuit pattern altitude: ___;
     ATIS: <ATIS>, GND: <GND>, TWR: <TWR>, A/A: _____ Approach: _____;
-    RWY: <RWY>, Length: ____ m., Req. Dist.: ____ m., Surface: __________;
-    Exp. Wind: ______, Exp. QNH: ____ hpa;
+    RWY: <RWY>, Length: _____ m., Req. Dist.: ____ m., Surface: __________;
+    Exp. Wind: _________, Exp. QNH: ____ hPa; Exp. TWY: ____
     RWY: ____, Wind: _______, QNH: _______, Squak: _______"""
 
 
     departure_text = fill_template(text_template, departure_info)
     destination_text = fill_template(text_template, destination_info)
 
-    ws["C2"].value = departure_text
-    ws[f"E{len(tables['main']) * 2}"].value = destination_text
+    # Inserting descriptions
+    ws[f"C{3}"].value = departure_text
+    ws[f"C{len(main_df) * 3 + 1}"].value = destination_text
+
+    # formating descriptions
+
+    ws[f"C{3}"].value
+    ws[f"C{3}"].alignment = Alignment(horizontal="left", vertical="center")
+    ws[f"C{len(main_df) * 3 + 1}"].alignment = Alignment(horizontal="left", vertical="center")
 
 
+    ws.row_dimensions[3].height = 60
+    ws.row_dimensions[len(main_df) * 3 + 1].height = 60
 
 
-    # formating table
-    source_row = 2
-    target_row = len(main_df) * 2
+    # inserting additional text and formatting
+    ws.row_dimensions[len(main_df) * 3 + 3].height = 50
+    ws.merge_cells(f"A{len(main_df) * 3 + 3}:E{len(main_df) * 3 + 3}")
+    ws.merge_cells(f"F{len(main_df) * 3 + 3}:H{len(main_df) * 3 + 3}")
 
-    source_height = ws.row_dimensions[source_row].height
+    text_for_a = """Waypoint: Top, Track, Altitude, Radio, Engine, Estimates, Area
+Diversion: Endurance, Terrain, Infrastructure, Weather, Airport
+Arrival Briefing (Treats, RWY, Top Of Descent, Integration, Missed
+aproach holding time, Landing config and speed, Taxiway, Apron)"""
 
-    if source_height is not None:
-        ws.row_dimensions[target_row].height = source_height
+    text_for_g = """After T/O: Flaps, Lights, Engine
+Approach: QNH, Mixture, Fuel, Flaps
+Landing: Mixture, Flaps, Lights
+After Landing: Heat, Light, Flaps"""
 
-    ws[f"E{target_row}"].alignment = copy(
-        ws[f"C{source_row}"].alignment
-    )
-    print(ws[f"C{source_row}"].value, ws[f"C{source_row}"].alignment)
-    print(ws[f"E{target_row}"].value, ws[f"C{source_row}"].alignment)
-
+    ws[f"A{len(main_df) * 3 + 3}"].value = text_for_a
+    ws[f"F{len(main_df) * 3 + 3}"].value = text_for_g
     
-    print(ws[f"E{target_row - 1}"].value)
-    print(ws[f"E{target_row}"].value)
-    print(ws[f"E{target_row + 1}"].value)
-    ws.unmerge_cells(f"C{len(tables['main']) * 2 + 1}:C{len(tables['main']) * 2 + 2}")
-    ws.unmerge_cells(f"D{len(tables['main']) * 2 + 1}:D{len(tables['main']) * 2 + 2}")
-
-
-
     # saving
     wb.save(save_path)
